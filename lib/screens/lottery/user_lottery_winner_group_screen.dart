@@ -6,7 +6,7 @@ import '../../models/user_model.dart';
 class UserLotteryWinnerGroupScreen extends StatefulWidget {
   final String groupId;
   final String winnerId;
-  
+  //skjadgsakjd
   const UserLotteryWinnerGroupScreen({
     Key? key, 
     required this.groupId,
