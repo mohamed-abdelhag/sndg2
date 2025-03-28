@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminApproveHolderScreen extends StatefulWidget {
   @override
@@ -8,7 +9,7 @@ class AdminApproveHolderScreen extends StatefulWidget {
 }
 
 class _AdminApproveHolderScreenState extends State<AdminApproveHolderScreen> {
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService(Supabase.instance.client);
   bool _isLoading = true;
   List<UserModel> _holderRequests = [];
 

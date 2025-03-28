@@ -3,6 +3,7 @@ import '../../services/auth_service.dart';
 import '../../services/group_service.dart';
 import '../../models/user_model.dart';
 import '../../models/group_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HolderDashboardScreen extends StatefulWidget {
   @override
@@ -10,8 +11,8 @@ class HolderDashboardScreen extends StatefulWidget {
 }
 
 class _HolderDashboardScreenState extends State<HolderDashboardScreen> {
-  final AuthService _authService = AuthService();
-  final GroupService _groupService = GroupService();
+  final AuthService _authService = AuthService(Supabase.instance.client);
+  final GroupService _groupService = GroupService(Supabase.instance.client);
   
   UserModel? _currentUser;
   List<GroupModel> _groups = [];

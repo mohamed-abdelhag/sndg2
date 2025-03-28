@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   @override
@@ -8,7 +9,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  final AuthService _authService = AuthService();
+  final AuthService _authService = AuthService(Supabase.instance.client);
   UserModel? _currentUser;
   bool _isLoading = true;
 

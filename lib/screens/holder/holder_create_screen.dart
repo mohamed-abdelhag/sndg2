@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/group_service.dart';
 import '../../models/user_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HolderCreateScreen extends StatefulWidget {
   @override
@@ -9,8 +10,8 @@ class HolderCreateScreen extends StatefulWidget {
 }
 
 class _HolderCreateScreenState extends State<HolderCreateScreen> {
-  final AuthService _authService = AuthService();
-  final GroupService _groupService = GroupService();
+  final AuthService _authService = AuthService(Supabase.instance.client);
+  final GroupService _groupService = GroupService(Supabase.instance.client);
   
   final _formKey = GlobalKey<FormState>();
   

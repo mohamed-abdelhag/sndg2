@@ -1,3 +1,15 @@
+-- Create the groups table
+CREATE TABLE groups (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL, -- 'standard' or 'lottery'
+  savings_goal DECIMAL NOT NULL,
+  holder_id UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  group_code TEXT NOT NULL UNIQUE
+);
+
 -- Create the users table
 CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users(id),
@@ -11,17 +23,10 @@ CREATE TABLE users (
   requested_group_id UUID NULL
 );
 
--- Create the groups table
-CREATE TABLE groups (
-  id UUID PRIMARY KEY,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL, -- 'standard' or 'lottery'
-  savings_goal DECIMAL NOT NULL,
-  holder_id UUID NOT NULL REFERENCES users(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  group_code TEXT NOT NULL UNIQUE
-);
+-- Add the foreign key constraint for groups.holder_id now that users table exists
+ALTER TABLE groups
+ADD CONSTRAINT fk_holder_id
+FOREIGN KEY (holder_id) REFERENCES users(id);
 
 -- Create the standard group metadata table
 CREATE TABLE standard_group_metadata (

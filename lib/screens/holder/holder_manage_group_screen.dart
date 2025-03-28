@@ -1,4 +1,4 @@
- import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/auth_service.dart';
 import '../../models/group_model.dart';
@@ -70,7 +70,7 @@ class _HolderManageGroupScreenState extends State<HolderManageGroupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Group information section
-          Text('Group ID: ${widget.groupId}', style: Theme.of(context).textTheme.headline6),
+          Text('Group ID: ${widget.groupId}', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 20),
           
           // Action buttons
