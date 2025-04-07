@@ -10,8 +10,8 @@ class HolderCreateScreen extends StatefulWidget {
 }
 
 class _HolderCreateScreenState extends State<HolderCreateScreen> {
-  final AuthService _authService = AuthService(Supabase.instance.client);
-  final GroupService _groupService = GroupService(Supabase.instance.client);
+  final AuthService _authService = AuthService();
+  final GroupService _groupService = GroupService();
   
   final _formKey = GlobalKey<FormState>();
   

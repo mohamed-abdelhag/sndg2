@@ -5,7 +5,7 @@ import '../models/user_model.dart';
 class AuthService {
   final SupabaseClient _client;
   
-  AuthService(this._client);
+  AuthService([SupabaseClient? client]) : _client = client ?? Supabase.instance.client;
 
   // Check if user is admin based on email
   bool isAdmin(String email) {
@@ -15,12 +15,12 @@ class AuthService {
   // Login user
   Future<UserModel?> login(String email, String password) async {
     try {
-      final response = await _client.auth.signIn(
+      final response = await _client.auth.signInWithPassword(
         email: email,
         password: password,
       );
       
-      final user = _client.auth.currentUser;
+      final user = response.user;
       if (user != null) {
         // Get user data from database
         final userData = await _client
@@ -40,9 +40,12 @@ class AuthService {
   // Register new user
   Future<UserModel?> signup(String email, String password) async {
     try {
-      final response = await _client.auth.signUp(email, password);
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+      );
       
-      final user = _client.auth.currentUser;
+      final user = response.user;
       if (user != null) {
         // Determine if user is admin
         final role = isAdmin(email) ? 'admin' : 'normal';

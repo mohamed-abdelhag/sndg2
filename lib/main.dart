@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart'; // Import dotenv
 import 'config/router.dart'; // Import the router
+import 'config/supabase_config.dart'; // Import our Supabase config
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter is initialized
-  await dotenv.load(); // Load environment variables
 
   await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!, // Use the URL from .env
-    anonKey: dotenv.env['SUPABASE_ANON_KEY']!, // Use the Anon Key from .env
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
   );
   runApp(const MyApp());
 }
