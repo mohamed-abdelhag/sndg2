@@ -77,6 +77,26 @@ class AuthService {
     await _client.auth.signOut();
   }
   
+  // Get current user
+  Future<UserModel?> getCurrentUser() async {
+    final user = _client.auth.currentUser;
+    if (user != null) {
+      try {
+        final userData = await _client
+            .from('users')
+            .select()
+            .eq('id', user.id)
+            .single();
+        
+        return UserModel.fromJson(userData as Map<String, dynamic>);
+      } catch (e) {
+        // User might be authenticated but not in the users table (edge case)
+        return null;
+      }
+    }
+    return null;
+  }
+  
   // Request to become a holder
   Future<void> requestHolder(String userId) async {
     await _client
@@ -185,20 +205,5 @@ class AuthService {
           'updated_at': DateTime.now().toIso8601String()
         })
         .eq('id', userId);
-  }
-  
-  // Get current user
-  Future<UserModel?> getCurrentUser() async {
-    final user = _client.auth.currentUser;
-    if (user != null) {
-      final userData = await _client
-          .from('users')
-          .select()
-          .eq('id', user.id)
-          .single();
-      
-      return UserModel.fromJson(userData as Map<String, dynamic>);
-    }
-    return null;
   }
 } 
