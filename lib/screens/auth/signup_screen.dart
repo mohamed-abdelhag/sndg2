@@ -60,13 +60,23 @@ class _SignupScreenState extends State<SignupScreen> {
         Navigator.pop(context);
       } else {
         setState(() {
-          _errorMessage = 'Failed to create account. Please try again.';
+          _errorMessage = 'Failed to create account. Please check your information and try again.';
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
+      
+      String errorMsg = e.toString();
+      // Handle Supabase specific errors
+      if (errorMsg.contains('email already')) {
+        errorMsg = 'This email address is already in use. Please use a different email or try logging in.';
+      } else if (errorMsg.contains('password')) {
+        errorMsg = 'Password is too weak. Please use a stronger password.';
+      }
+      
       setState(() {
-        _errorMessage = 'Registration failed: ${e.toString()}';
+        _errorMessage = 'Registration failed: $errorMsg';
         _isLoading = false;
       });
     }

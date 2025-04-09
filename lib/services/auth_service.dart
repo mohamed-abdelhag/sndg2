@@ -40,6 +40,7 @@ class AuthService {
   // Register new user
   Future<UserModel?> signup(String email, String password) async {
     try {
+      // First, create the auth user
       final response = await _client.auth.signUp(
         email: email,
         password: password,
@@ -62,9 +63,19 @@ class AuthService {
           'requested_join_group': false,
         };
         
-        await _client.from('users').insert(userData);
-        
-        return UserModel.fromJson(userData);
+        try {
+          // Insert the user into the users table
+          await _client.from('users').insert(userData);
+          
+          // Return the user model
+          return UserModel.fromJson(userData);
+        } catch (dbError) {
+          // Log the database error but don't rethrow
+          // We can't delete the auth user as normal clients don't have admin permissions
+          // The user will need to use "forgot password" or try again
+          print('Warning: User created in auth but failed to create in database: $dbError');
+          throw 'User registration partially failed. Please try again or contact support.';
+        }
       }
       return null;
     } catch (e) {
