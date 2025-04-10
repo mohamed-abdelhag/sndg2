@@ -50,14 +50,30 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
       
       if (user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created successfully! You can now login.'),
-            backgroundColor: Colors.green,
-          ),
+        // Show a dialog instead of just a snackbar to make the email verification step clearer
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Account Created!'),
+              content: const Text(
+                'Your account has been created. Please check your email to verify your account before logging in.\n\n'
+                'If you don\'t see the verification email, please check your spam folder.'
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: const Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Navigate back to login page after signup
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
         );
-        // Navigate back to login page after signup
-        Navigator.pop(context);
       } else {
         setState(() {
           _errorMessage = 'Failed to create account. Please check your information and try again.';

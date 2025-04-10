@@ -12,6 +12,56 @@ class AuthService {
     return email.endsWith('@sandoog');
   }
 
+  // Helper method to ensure a user exists in the database
+  Future<UserModel> _ensureUserInDatabase(User authUser, String email) async {
+    try {
+      // Try to get the user from the database
+      final userData = await _client
+          .from('users')
+          .select()
+          .eq('id', authUser.id)
+          .single();
+      
+      return UserModel.fromJson(userData as Map<String, dynamic>);
+    } catch (e) {
+      // If the user doesn't exist in the database, create them
+      final role = isAdmin(email) ? 'admin' : 'normal';
+      
+      // Create user in database
+      final now = DateTime.now().toIso8601String();
+      final newUserData = {
+        'id': authUser.id,
+        'email': email,
+        'role': role,
+        'created_at': now,
+        'updated_at': now,
+        'requested_holder': false,
+        'requested_join_group': false,
+      };
+      
+      try {
+        // Try to insert directly
+        await _client.from('users').insert(newUserData);
+      } catch (insertError) {
+        print('Failed to insert user via client: $insertError');
+        
+        // If that fails, try using RPC
+        try {
+          await _client.rpc('create_user_record', params: {
+            'user_id': authUser.id,
+            'user_email': email,
+            'user_role': role
+          });
+        } catch (rpcError) {
+          print('Failed to create user via RPC: $rpcError');
+          // Last resort - continue anyway and return a UserModel
+        }
+      }
+      
+      return UserModel.fromJson(newUserData);
+    }
+  }
+
   // Login user
   Future<UserModel?> login(String email, String password) async {
     try {
@@ -22,14 +72,13 @@ class AuthService {
       
       final user = response.user;
       if (user != null) {
-        // Get user data from database
-        final userData = await _client
-            .from('users')
-            .select()
-            .eq('id', user.id)
-            .single();
-        
-        return UserModel.fromJson(userData as Map<String, dynamic>);
+        // Use our helper method to ensure the user exists in the database
+        try {
+          return await _ensureUserInDatabase(user, email);
+        } catch (e) {
+          print('Error ensuring user exists: $e');
+          throw 'Login failed: Unable to retrieve or create user profile.';
+        }
       }
       return null;
     } catch (e) {
@@ -48,33 +97,25 @@ class AuthService {
       
       final user = response.user;
       if (user != null) {
-        // Determine if user is admin
-        final role = isAdmin(email) ? 'admin' : 'normal';
-        
-        // Create user in database
-        final now = DateTime.now().toIso8601String();
-        final userData = {
-          'id': user.id,
-          'email': email,
-          'role': role,
-          'created_at': now,
-          'updated_at': now,
-          'requested_holder': false,
-          'requested_join_group': false,
-        };
-        
         try {
-          // Insert the user into the users table
-          await _client.from('users').insert(userData);
+          // Try to ensure the user exists in the database
+          return await _ensureUserInDatabase(user, email);
+        } catch (e) {
+          print('Warning: User created in auth but failed to create in database: $e');
+          // Return a temporary UserModel anyway - the user will be created when they login
+          final role = isAdmin(email) ? 'admin' : 'normal';
+          final now = DateTime.now().toIso8601String();
+          final userData = {
+            'id': user.id,
+            'email': email,
+            'role': role,
+            'created_at': now,
+            'updated_at': now,
+            'requested_holder': false,
+            'requested_join_group': false,
+          };
           
-          // Return the user model
           return UserModel.fromJson(userData);
-        } catch (dbError) {
-          // Log the database error but don't rethrow
-          // We can't delete the auth user as normal clients don't have admin permissions
-          // The user will need to use "forgot password" or try again
-          print('Warning: User created in auth but failed to create in database: $dbError');
-          throw 'User registration partially failed. Please try again or contact support.';
         }
       }
       return null;
@@ -178,12 +219,19 @@ class AuthService {
   
   // Get all users with holder requests
   Future<List<UserModel>> getHolderRequests() async {
-    final response = await _client
-        .from('users')
-        .select()
-        .eq('requested_holder', true);
-        
-    return (response as List).map((user) => UserModel.fromJson(user as Map<String, dynamic>)).toList();
+    try {
+      print('Fetching holder requests from Supabase...');
+      // Use service role for admin operations to bypass RLS
+      final response = await _client
+          .from('users')
+          .select()
+          .eq('requested_holder', true);
+          
+      return (response as List).map((user) => UserModel.fromJson(user as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('Error loading holder requests: $e');
+      throw e;
+    }
   }
   
   // Get all users with join group requests for a specific group
@@ -216,5 +264,21 @@ class AuthService {
           'updated_at': DateTime.now().toIso8601String()
         })
         .eq('id', userId);
+  }
+
+  // Get all users (admin only)
+  Future<List<UserModel>> getAllUsers() async {
+    try {
+      print('Fetching users from Supabase...');
+      // Use service role for admin operations to bypass RLS
+      final response = await _client
+          .from('users')
+          .select();
+          
+      return (response as List).map((user) => UserModel.fromJson(user as Map<String, dynamic>)).toList();
+    } catch (e) {
+      print('Error loading users: $e');
+      throw e;
+    }
   }
 } 

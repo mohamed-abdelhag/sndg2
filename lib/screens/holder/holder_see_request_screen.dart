@@ -13,7 +13,7 @@ class HolderSeeRequestScreen extends StatefulWidget {
 }
 
 class _HolderSeeRequestScreenState extends State<HolderSeeRequestScreen> {
-  final AuthService authService = AuthService(Supabase.instance.client);
+  final AuthService authService = AuthService();
   bool isLoading = true;
   String? errorMessage;
   List<UserModel> requestingUsers = [];

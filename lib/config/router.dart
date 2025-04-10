@@ -5,8 +5,11 @@ import '../screens/landing_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/admin_approve_holder_screen.dart';
 import '../screens/admin/admin_see_users_screen.dart';
+import '../screens/admin/admin_manage_users_screen.dart';
 import '../screens/holder/holder_dashboard_screen.dart';
 import '../screens/holder/holder_create_screen.dart';
+import '../screens/user_request_holder_screen.dart';
+import '../screens/user_request_join_group_screen.dart';
 // These screens will be created:
 import '../screens/holder/holder_manage_group_screen.dart';
 import '../screens/holder/holder_see_request_screen.dart';
@@ -33,6 +36,12 @@ class AppRouter {
       case '/landing':
         return MaterialPageRoute(builder: (_) => LandingScreen());
         
+      // User Request Routes
+      case '/user_request_holder':
+        return MaterialPageRoute(builder: (_) => UserRequestHolderScreen());
+      case '/user_request_join_group':
+        return MaterialPageRoute(builder: (_) => UserRequestJoinGroupScreen());
+        
       // Admin Routes
       case '/admin_dashboard':
         return MaterialPageRoute(builder: (_) => AdminDashboardScreen());
@@ -40,6 +49,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => AdminApproveHolderScreen());
       case '/admin_see_users':
         return MaterialPageRoute(builder: (_) => AdminSeeUsersScreen());
+      case '/admin_manage_users':
+        return MaterialPageRoute(builder: (_) => AdminManageUsersScreen());
         
       // Holder Routes
       case '/holder_dashboard':

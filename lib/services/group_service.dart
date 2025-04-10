@@ -200,4 +200,19 @@ class GroupService {
     
     return (response as List).map((group) => GroupModel.fromJson(group as Map<String, dynamic>)).toList();
   }
+  
+  // Get group ID by code
+  Future<String?> getGroupIdByCode(String groupCode) async {
+    try {
+      final response = await supabase
+          .from('groups')
+          .select('id')
+          .eq('group_code', groupCode)
+          .single();
+      
+      return (response as Map<String, dynamic>)['id'] as String;
+    } catch (e) {
+      return null;
+    }
+  }
 } 

@@ -83,61 +83,76 @@ Each group will have:
    - New users can create an account by providing their email and setting a password.
 
 3. **User Landing Screen**
-   - For users who have not requested to become holders, have not requested to join a group, are not in a group, and are not holders yet. This screen provides options to explore the app.
+   - For users who have not requested to become holders, have not requested to join a group, are not in a group, and are not holders yet. This screen provides options to request to join a group or request to become a holder.
+   - Also displays status for users who have pending requests.
+   - Routes users to appropriate screens based on their role and group status:
+     - Normal users with no group see the landing page options
+     - Normal users with a group are directed to the appropriate group dashboard
+     - Users who requested to be a holder or join a group see status messages
+     - Holders are directed to holder dashboard or create group screen
+     - Admins are directed to admin dashboard
+
+4. **User Request Holder Screen**
+   - Allows users to submit a request to become a group holder.
+   - Explains the responsibilities of a holder and confirms user interest.
+
+5. **User Request Join Group Screen**
+   - Allows users to enter a group code to request joining an existing group.
+   - Validates the group code and submits the join request to the group holder.
 
 ### Admin Screens
-4. **Admin Dashboard**
+6. **Admin Dashboard**
    - Admins can manage users and groups, view statistics, and oversee group activities.
 
-5. **Admin Approve Holder Screen**
+7. **Admin Approve Holder Screen**
    - Admins can approve or reject requests from users wanting to become holders, ensuring proper management of group leaders.
 
-6. **Admin See Users Screen**
+8. **Admin See Users Screen**
    - Admins can view all registered users, their roles, and their group affiliations.
 
 ### Holder Screens
-7. **Holder Dashboard**
+9. **Holder Dashboard**
    - Overview for holders to manage their group, including member activities and contributions.
 
-8. **Holder Create Screen**
-   - Holders can create a new group, setting the group name, type, and savings goal.
+10. **Holder Create Screen**
+    - Holders can create a new group, setting the group name, type, and savings goal.
 
-9. **Holder Manage Group Screen**
-   - Holders can see the group code, copy it, and send it to users for joining. They can also manage member requests, view active members, and see group details such as savings goals and current total pool.
+11. **Holder Manage Group Screen**
+    - Holders can see the group code, copy it, and send it to users for joining. They can also manage member requests, view active members, and see group details such as savings goals and current total pool.
 
-10. **Holder See Request Screen**
+12. **Holder See Request Screen**
     - Holders can view requests from users wanting to join their group and approve or reject them.
 
-11. **Holder Manage Members Screen**
+13. **Holder Manage Members Screen**
     - Holders can add or remove members from their group, ensuring the group remains manageable.
 
-12. **Holder Group Details Screen**
+14. **Holder Group Details Screen**
     - Displays group information, including savings goals, current total pool, and member contributions.
 
-13. **Holder Lottery Winner Selection Screen**
+15. **Holder Lottery Winner Selection Screen**
     - Holders can initiate the lottery process to select a winner from the group.
 
-14. **Holder Manage Withdrawal Screen**
+16. **Holder Manage Withdrawal Screen**
     - Holders can view and manage withdrawal requests from group members.
 
 ### User Normal Group Screens 
-15. **User Normal Group Dashboard**
+17. **User Normal Group Dashboard**
     - Overview for users in a standard group. Users can input their monthly contributions and see if they are on track or behind month over month.
 
-16. **User Group Overview Tracking Screen**
+18. **User Group Overview Tracking Screen**
     - Users can track their contributions and overall group progress towards the savings goal.
 
-17. **User Withdrawal Request Screen**
+19. **User Withdrawal Request Screen**
     - Users can submit withdrawal requests from the group's savings pool.
 
 ### User Lottery Group Screens
-18. **User Lottery Group Dashboard**
+20. **User Lottery Group Dashboard**
     - Overview for users in a lottery group. Users can input their monthly contributions and see if they are on track or behind month over month.
 
-19. **User Lottery Group Overview Tracking Screen**
+21. **User Lottery Group Overview Tracking Screen**
     - Users can track their contributions and the status of the lottery pool.
 
-20. **User Lottery Winner Group Screen**
+22. **User Lottery Winner Group Screen**
     - Displays information about the lottery winnings, including amounts won and collection status.
 
 ## Services

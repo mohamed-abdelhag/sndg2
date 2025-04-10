@@ -4,12 +4,14 @@ import '../../models/user_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
+  const AdminDashboardScreen({Key? key}) : super(key: key);
+
   @override
   _AdminDashboardScreenState createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  final AuthService _authService = AuthService(Supabase.instance.client);
+  final AuthService _authService = AuthService();
   UserModel? _currentUser;
   bool _isLoading = true;
 
@@ -40,24 +42,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: Text('Admin Dashboard')),
-        body: Center(child: CircularProgressIndicator()),
+        appBar: AppBar(title: const Text('Admin Dashboard')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_currentUser == null || _currentUser!.role != 'admin') {
       return Scaffold(
-        appBar: AppBar(title: Text('Access Denied')),
-        body: Center(child: Text('You do not have admin privileges.')),
+        appBar: AppBar(title: const Text('Access Denied')),
+        body: const Center(child: Text('You do not have admin privileges.')),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Admin Dashboard'),
+        title: const Text('Admin Dashboard'),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: const Icon(Icons.logout),
             onPressed: () async {
               await _authService.logout();
               Navigator.pushReplacementNamed(context, '/');
@@ -81,13 +83,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       'Welcome, Admin!',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text('Email: ${_currentUser!.email}'),
                   ],
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             _buildAdminActionCard(
               context,
               title: 'Approve Holder Requests',
@@ -97,7 +99,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Navigator.pushNamed(context, '/admin_approve_holder');
               },
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             _buildAdminActionCard(
               context,
               title: 'View All Users',
@@ -105,6 +107,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               icon: Icons.people,
               onTap: () {
                 Navigator.pushNamed(context, '/admin_see_users');
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildAdminActionCard(
+              context,
+              title: 'Manage Users',
+              description: 'Advanced user management with filtering and approval options',
+              icon: Icons.manage_accounts,
+              onTap: () {
+                Navigator.pushNamed(context, '/admin_manage_users');
               },
             ),
           ],
@@ -129,7 +141,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             children: [
               Icon(icon, size: 40, color: Theme.of(context).primaryColor),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,7 +150,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       title,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       description,
                       style: Theme.of(context).textTheme.bodyMedium,
@@ -146,7 +158,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios),
+              const Icon(Icons.arrow_forward_ios),
             ],
           ),
         ),

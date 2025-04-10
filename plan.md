@@ -1,9 +1,20 @@
-[ ] user login 
-[ ] admin login
-[ ] holder login
+[x] user login 
+[x] admin login
+[x] holder login
 [ ] manage holder 
 [ ] user signup 
  
+[x] admin view users  
+[x] admin filter users 
+[x] landing screen should work   
 
 
- []  check teh supabse using the mcp its activated check the tools u have and check tables and edit whatver u need to to make users be able to login the order of events user signs ups added to auth , confirms email then signs in and he confirmed user can login when he passes auth first time he is added to users table make those changes pleaes
+[x] admin approve holder
+
+
+
+
+
+[x] user request holder screen - For users to submit a request to become a holder
+[x] user request join group screen - For users to submit a request to join a group using a group code
+[x] user routing - Route users to appropriate screens based on their role and group status:
