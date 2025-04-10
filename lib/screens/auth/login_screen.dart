@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     
     try {
-      print('Attempting to login with email: $email');
+      print('Login attempt for: $email');
       final user = await authService.login(email, password);
       
       if (!mounted) return;
@@ -48,34 +48,36 @@ class _LoginScreenState extends State<LoginScreen> {
         } else if (user.role == 'holder') {
           Navigator.pushReplacementNamed(context, '/holder_dashboard');
         } else if (user.groupId != null) {
-          // Check if the user is in a standard or lottery group
-          // This logic would need to be expanded once you implement both group types
           Navigator.pushReplacementNamed(context, '/user_normal_group_dashboard', 
             arguments: user.groupId);
-        } else if (user.requestedHolder) {
-          Navigator.pushReplacementNamed(context, '/landing');
-        } else if (user.requestedJoinGroup) {
-          Navigator.pushReplacementNamed(context, '/landing');
         } else {
           Navigator.pushReplacementNamed(context, '/landing');
         }
       } else {
-        print('Login returned null user');
+        print('Login failed - null user returned');
         setState(() {
-          _errorMessage = 'Invalid login credentials. Please try again.';
+          _errorMessage = 'Invalid email or password. Please try again.';
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('Login error: $e');
+      print('Login error caught: $e');
+      String errorMsg = 'Login failed';
+      
+      if (e.toString().contains('Invalid login credentials')) {
+        errorMsg = 'Incorrect email or password';
+      } else if (e.toString().contains('not found')) {
+        errorMsg = 'Account not found. Please sign up first.';
+      } else if (e.toString().contains('User account not found')) {
+        errorMsg = 'Account not found. Please sign up first.';
+      } else if (e.toString().contains('network')) {
+        errorMsg = 'Network error. Please check your connection.';
+      } else {
+        errorMsg = 'Login error: ${e.toString()}';
+      }
+      
       setState(() {
-        if (e.toString().contains('User account not found')) {
-          _errorMessage = 'Account not found. Please sign up first.';
-        } else if (e.toString().contains('Invalid login credentials')) {
-          _errorMessage = 'Incorrect email or password. Please try again.';
-        } else {
-          _errorMessage = 'Login failed: ${e.toString()}';
-        }
+        _errorMessage = errorMsg;
         _isLoading = false;
       });
     }
