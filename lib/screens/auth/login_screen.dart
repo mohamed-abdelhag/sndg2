@@ -35,11 +35,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     
     try {
+      print('Attempting to login with email: $email');
       final user = await authService.login(email, password);
       
       if (!mounted) return;
       
       if (user != null) {
+        print('Login successful, user role: ${user.role}');
         // Route based on user role
         if (user.role == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin_dashboard');
@@ -58,14 +60,22 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacementNamed(context, '/landing');
         }
       } else {
+        print('Login returned null user');
         setState(() {
-          _errorMessage = 'Unable to login. Please try again.';
+          _errorMessage = 'Invalid login credentials. Please try again.';
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('Login error: $e');
       setState(() {
-        _errorMessage = 'Login failed: ${e.toString()}';
+        if (e.toString().contains('User account not found')) {
+          _errorMessage = 'Account not found. Please sign up first.';
+        } else if (e.toString().contains('Invalid login credentials')) {
+          _errorMessage = 'Incorrect email or password. Please try again.';
+        } else {
+          _errorMessage = 'Login failed: ${e.toString()}';
+        }
         _isLoading = false;
       });
     }

@@ -65,23 +65,68 @@ class AuthService {
   // Login user
   Future<UserModel?> login(String email, String password) async {
     try {
+      print('Attempting login for: $email');
+      
       final response = await _client.auth.signInWithPassword(
         email: email,
         password: password,
       );
       
       final user = response.user;
-      if (user != null) {
-        // Use our helper method to ensure the user exists in the database
-        try {
-          return await _ensureUserInDatabase(user, email);
-        } catch (e) {
-          print('Error ensuring user exists: $e');
-          throw 'Login failed: Unable to retrieve or create user profile.';
-        }
+      if (user == null) {
+        print('Auth failed - user is null');
+        return null;
       }
-      return null;
+      
+      print('Auth successful for user: ${user.id}');
+      
+      // For admin users, create a direct model
+      if (isAdmin(email)) {
+        print('Admin user detected, creating admin model');
+        final now = DateTime.now().toIso8601String();
+        try {
+          // Try to insert admin if it doesn't exist (will fail silently if exists)
+          await _client.from('users').upsert({
+            'id': user.id,
+            'email': email,
+            'role': 'admin',
+            'created_at': now,
+            'updated_at': now,
+            'requested_holder': false,
+            'requested_join_group': false,
+          }, onConflict: 'id');
+        } catch (e) {
+          print('Admin upsert error (non-critical): $e');
+        }
+        
+        // Return admin model regardless of DB success
+        return UserModel.fromJson({
+          'id': user.id,
+          'email': email,
+          'role': 'admin',
+          'created_at': now,
+          'updated_at': now,
+          'requested_holder': false,
+          'requested_join_group': false,
+        });
+      }
+      
+      // For non-admins, try to get from database
+      try {
+        final userData = await _client
+            .from('users')
+            .select()
+            .eq('id', user.id)
+            .single();
+        
+        print('Found user in database: ${userData['email']}');
+        return UserModel.fromJson(userData as Map<String, dynamic>);
+      } catch (e) {
+        print('User not found in database: $e');
+        throw 'User account not found in the system. Please sign up first.';
+      }
     } catch (e) {
+      print('Login error: $e');
       rethrow;
     }
   }
@@ -89,6 +134,8 @@ class AuthService {
   // Register new user
   Future<UserModel?> signup(String email, String password) async {
     try {
+      print('Attempting signup for: $email');
+      
       // First, create the auth user
       final response = await _client.auth.signUp(
         email: email,
@@ -96,30 +143,46 @@ class AuthService {
       );
       
       final user = response.user;
-      if (user != null) {
-        try {
-          // Try to ensure the user exists in the database
-          return await _ensureUserInDatabase(user, email);
-        } catch (e) {
-          print('Warning: User created in auth but failed to create in database: $e');
-          // Return a temporary UserModel anyway - the user will be created when they login
-          final role = isAdmin(email) ? 'admin' : 'normal';
-          final now = DateTime.now().toIso8601String();
-          final userData = {
-            'id': user.id,
-            'email': email,
-            'role': role,
-            'created_at': now,
-            'updated_at': now,
-            'requested_holder': false,
-            'requested_join_group': false,
-          };
-          
-          return UserModel.fromJson(userData);
+      if (user == null) {
+        print('Auth signup failed - user is null');
+        return null;
+      }
+      
+      print('Auth signup successful for user: ${user.id}');
+      
+      // Determine the role
+      final role = isAdmin(email) ? 'admin' : 'normal';
+      print('Assigned role: $role');
+      
+      // Create user data
+      final now = DateTime.now().toIso8601String();
+      final userData = {
+        'id': user.id,
+        'email': email,
+        'role': role,
+        'created_at': now,
+        'updated_at': now,
+        'requested_holder': false,
+        'requested_join_group': false,
+      };
+      
+      // Try to insert the user into the database
+      try {
+        print('Inserting user into database');
+        await _client.from('users').insert(userData);
+        print('User successfully inserted into database');
+      } catch (insertError) {
+        print('Error inserting user into database: $insertError');
+        // If we failed to insert but the user is an admin, we can still return a model
+        if (!isAdmin(email)) {
+          throw 'Failed to create user profile in database';
         }
       }
-      return null;
+      
+      // Return the user model
+      return UserModel.fromJson(userData);
     } catch (e) {
+      print('Signup error: $e');
       rethrow;
     }
   }
@@ -132,7 +195,19 @@ class AuthService {
   // Get current user
   Future<UserModel?> getCurrentUser() async {
     final user = _client.auth.currentUser;
-    if (user != null) {
+    if (user == null) {
+      print('No current auth user');
+      return null;
+    }
+    
+    print('Current auth user found: ${user.id}');
+    final email = user.email;
+    
+    // Special handling for admin users
+    if (email != null && isAdmin(email)) {
+      print('Admin user detected by email domain');
+      
+      // Check if admin exists in DB first
       try {
         final userData = await _client
             .from('users')
@@ -140,13 +215,38 @@ class AuthService {
             .eq('id', user.id)
             .single();
         
+        print('Admin found in database');
         return UserModel.fromJson(userData as Map<String, dynamic>);
       } catch (e) {
-        // User might be authenticated but not in the users table (edge case)
-        return null;
+        // Admin not in DB, create model without DB dependency
+        print('Admin not in database, creating model');
+        final now = DateTime.now().toIso8601String();
+        return UserModel.fromJson({
+          'id': user.id,
+          'email': email,
+          'role': 'admin',
+          'created_at': now,
+          'updated_at': now,
+          'requested_holder': false,
+          'requested_join_group': false,
+        });
       }
     }
-    return null;
+    
+    // Regular user - must exist in database
+    try {
+      final userData = await _client
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .single();
+      
+      print('Regular user found in database');
+      return UserModel.fromJson(userData as Map<String, dynamic>);
+    } catch (e) {
+      print('Error getting user from database: $e');
+      return null;
+    }
   }
   
   // Request to become a holder
@@ -220,13 +320,19 @@ class AuthService {
   // Get all users with holder requests
   Future<List<UserModel>> getHolderRequests() async {
     try {
-      print('Fetching holder requests from Supabase...');
-      // Use service role for admin operations to bypass RLS
-      final response = await _client
-          .from('users')
-          .select()
-          .eq('requested_holder', true);
-          
+      print('Fetching holder requests using RPC function...');
+      
+      final client = Supabase.instance.client;
+      
+      // Use the security_definer function to bypass RLS
+      final response = await client.rpc('get_holder_requests');
+      
+      print('Holder requests response: $response');
+      
+      if (response == null) {
+        return [];
+      }
+      
       return (response as List).map((user) => UserModel.fromJson(user as Map<String, dynamic>)).toList();
     } catch (e) {
       print('Error loading holder requests: $e');
@@ -269,12 +375,19 @@ class AuthService {
   // Get all users (admin only)
   Future<List<UserModel>> getAllUsers() async {
     try {
-      print('Fetching users from Supabase...');
-      // Use service role for admin operations to bypass RLS
-      final response = await _client
-          .from('users')
-          .select();
-          
+      print('Fetching all users using RPC function...');
+      
+      final client = Supabase.instance.client;
+      
+      // Use the security_definer function to bypass RLS
+      final response = await client.rpc('get_all_users');
+      
+      print('All users response: $response');
+      
+      if (response == null) {
+        return [];
+      }
+      
       return (response as List).map((user) => UserModel.fromJson(user as Map<String, dynamic>)).toList();
     } catch (e) {
       print('Error loading users: $e');

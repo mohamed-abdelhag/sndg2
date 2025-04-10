@@ -39,20 +39,26 @@ class _AdminApproveHolderScreenState extends State<AdminApproveHolderScreen> {
         return;
       }
       
+      print('Current user is admin, loading holder requests...');
+      
       try {
-        // Get holder requests using service role to bypass RLS
+        // Get holder requests
         final requests = await _authService.getHolderRequests();
+        print('Loaded ${requests.length} holder requests');
+        
         setState(() {
           _holderRequests = requests;
           _isLoading = false;
         });
       } catch (e) {
+        print('Error in getHolderRequests: $e');
         setState(() {
           _errorMessage = 'Error loading holder requests: ${e.toString()}';
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('General error in _loadHolderRequests: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();

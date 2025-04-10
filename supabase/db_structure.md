@@ -110,18 +110,99 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
+#### get_all_users (Admin Function)
+```sql
+CREATE OR REPLACE FUNCTION get_all_users()
+RETURNS SETOF public.users AS $$
+BEGIN
+  -- Check if the user is an admin
+  IF EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'admin'
+  ) THEN
+    RETURN QUERY SELECT * FROM public.users;
+  ELSE
+    RAISE EXCEPTION 'Permission denied: Only admins can call this function';
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+#### get_holder_requests (Admin Function)
+```sql
+CREATE OR REPLACE FUNCTION get_holder_requests()
+RETURNS SETOF public.users AS $$
+BEGIN
+  -- Check if the user is an admin
+  IF EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'admin'
+  ) THEN
+    RETURN QUERY SELECT * FROM public.users WHERE requested_holder = true;
+  ELSE
+    RAISE EXCEPTION 'Permission denied: Only admins can call this function';
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### Row Level Security Policies
+
+#### users table RLS
+```sql
+-- Enable RLS
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Create policies
+CREATE POLICY "Users can read their own data" 
+ON public.users 
+FOR SELECT 
+USING (auth.uid() = id);
+
+CREATE POLICY "Admins can read all users" 
+ON public.users 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
+
+CREATE POLICY "Admins can update all users" 
+ON public.users 
+FOR UPDATE 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'admin'
+  )
+);
+
+CREATE POLICY "Holders can read users in their groups" 
+ON public.users 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = auth.uid() AND role = 'holder'
+  ) AND (
+    group_id IN (
+      SELECT group_id FROM public.users 
+      WHERE id = auth.uid() AND role = 'holder'
+    )
+  )
+);
+```
+
 ### Existing Data
 - **Admin User:** admin1@sandoog.com
-- **Current Tables:** None (Database has been reset)
+- **Current Tables:** users, groups, standard_group_metadata, lottery_group_metadata, withdrawals, and contribution tables
 
-### Authorization Policies
-Default RLS (Row Level Security) policies will be created to ensure:
-- Users can only read/write their own data
-- Holders can manage their groups
-- Admins have full access to all tables
-
-## Development Notes
+### Development Notes
 - The application handles authentication through Supabase Auth
 - Dynamic contribution tables are created per group using a stored procedure
 - Admin users are identified by emails ending with '@sandoog'
+- Security definer functions are used to safely bypass RLS for admin operations
+- Row Level Security policies control access to data based on user roles
 

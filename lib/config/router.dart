@@ -4,7 +4,6 @@ import '../screens/auth/signup_screen.dart';
 import '../screens/landing_screen.dart';
 import '../screens/admin/admin_dashboard_screen.dart';
 import '../screens/admin/admin_approve_holder_screen.dart';
-import '../screens/admin/admin_see_users_screen.dart';
 import '../screens/admin/admin_manage_users_screen.dart';
 import '../screens/holder/holder_dashboard_screen.dart';
 import '../screens/holder/holder_create_screen.dart';
@@ -47,8 +46,7 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => AdminDashboardScreen());
       case '/admin_approve_holder':
         return MaterialPageRoute(builder: (_) => AdminApproveHolderScreen());
-      case '/admin_see_users':
-        return MaterialPageRoute(builder: (_) => AdminSeeUsersScreen());
+   
       case '/admin_manage_users':
         return MaterialPageRoute(builder: (_) => AdminManageUsersScreen());
         

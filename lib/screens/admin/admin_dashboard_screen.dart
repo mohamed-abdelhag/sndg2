@@ -102,16 +102,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const SizedBox(height: 16),
             _buildAdminActionCard(
               context,
-              title: 'View All Users',
-              description: 'See all users in the system',
-              icon: Icons.people,
-              onTap: () {
-                Navigator.pushNamed(context, '/admin_see_users');
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildAdminActionCard(
-              context,
               title: 'Manage Users',
               description: 'Advanced user management with filtering and approval options',
               icon: Icons.manage_accounts,

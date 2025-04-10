@@ -35,6 +35,8 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen> {
       
       // First check if the current user is an admin
       final currentUser = await _authService.getCurrentUser();
+      print('Current user: ${currentUser?.email}, role: ${currentUser?.role}');
+      
       if (currentUser == null || currentUser.role != 'admin') {
         setState(() {
           _errorMessage = 'You do not have permission to view this page';
@@ -43,8 +45,11 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen> {
         return;
       }
       
+      print('Current user is admin, loading all users...');
+      
       try {
         final users = await _authService.getAllUsers();
+        print('Loaded ${users.length} users');
         
         setState(() {
           _allUsers = users;
@@ -52,13 +57,14 @@ class _AdminManageUsersScreenState extends State<AdminManageUsersScreen> {
           _isLoading = false;
         });
       } catch (e) {
-        print('Error querying all users: $e');
+        print('Error in getAllUsers: $e');
         setState(() {
           _errorMessage = 'Error loading users: ${e.toString()}';
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('General error in _loadUsers: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
