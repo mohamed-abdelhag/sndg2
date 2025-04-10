@@ -9,7 +9,7 @@ class AuthService {
 
   // Check if user is admin based on email
   bool isAdmin(String email) {
-    return email.endsWith('@sandoog');
+    return email.endsWith('@sandoog') || email.contains('@sandoog.');
   }
 
   // Helper method to ensure a user exists in the database
@@ -94,34 +94,58 @@ class AuthService {
       } catch (e) {
         print('User lookup failed, trying to create: $e');
         
-        // If not found, create the user record
-        final role = isAdmin(email) ? 'admin' : 'normal';
-        final now = DateTime.now().toIso8601String();
-        final newUserData = {
-          'id': user.id,
-          'email': email,
-          'role': role,
-          'created_at': now,
-          'updated_at': now,
-          'requested_holder': false,
-          'requested_join_group': false,
-        };
-        
+        // Try to explicitly call create_user_record function to ensure user exists
         try {
-          await _client.from('users').insert(newUserData);
-          print('Created new user in database');
-          return UserModel.fromJson(newUserData);
-        } catch (insertError) {
-          print('Failed to insert user: $insertError');
+          print('Calling create_user_record RPC');
+          final role = isAdmin(email) ? 'admin' : 'normal';
+          await _client.rpc('create_user_record', params: {
+            'user_id': user.id,
+            'user_email': email,
+            'user_role': role,
+          });
           
-          // For admin users, we can create a temporary model
-          if (isAdmin(email)) {
-            print('Creating admin model for non-DB user');
+          // After creating, try to fetch again
+          final newUserData = await _client
+              .from('users')
+              .select()
+              .eq('id', user.id)
+              .single();
+              
+          print('Created and fetched user from database');
+          return UserModel.fromJson(newUserData as Map<String, dynamic>);
+        } catch (rpcError) {
+          print('Failed to create user via RPC: $rpcError');
+          
+          // If that still fails, create a model directly
+          // Fall back to manual insertion for critical errors
+          final role = isAdmin(email) ? 'admin' : 'normal';
+          final now = DateTime.now().toIso8601String();
+          final newUserData = {
+            'id': user.id,
+            'email': email,
+            'role': role,
+            'created_at': now,
+            'updated_at': now,
+            'requested_holder': false,
+            'requested_join_group': false,
+          };
+          
+          try {
+            await _client.from('users').insert(newUserData);
+            print('Created new user in database');
             return UserModel.fromJson(newUserData);
+          } catch (insertError) {
+            print('Failed to insert user: $insertError');
+            
+            // For admin users, we can create a temporary model
+            if (isAdmin(email)) {
+              print('Creating admin model for non-DB user');
+              return UserModel.fromJson(newUserData);
+            }
+            
+            // For regular users, must exist in DB
+            throw 'User account could not be created. Please contact support.';
           }
-          
-          // For regular users, must exist in DB
-          throw 'User account could not be created. Please contact support.';
         }
       }
     } catch (e) {
@@ -338,6 +362,35 @@ class AuthService {
     try {
       print('Fetching holder requests via admin function...');
       
+      // First ensure we're listed as admin in the user_emails table
+      final currentUser = await getCurrentUser();
+      if (currentUser != null && isAdmin(currentUser.email)) {
+        try {
+          // Check if we're in user_emails as admin
+          final userEmailsCheck = await _client
+              .from('user_emails')
+              .select()
+              .eq('id', currentUser.id)
+              .single();
+              
+          // If found but not admin, update
+          if (userEmailsCheck != null && userEmailsCheck['is_admin'] == false) {
+            await _client
+                .from('user_emails')
+                .update({'is_admin': true})
+                .eq('id', currentUser.id);
+          }
+        } catch (e) {
+          // If not found, insert
+          await _client.from('user_emails').insert({
+            'id': currentUser.id,
+            'email': currentUser.email,
+            'is_admin': true,
+            'created_at': DateTime.now().toIso8601String()
+          });
+        }
+      }
+      
       // Use the more reliable admin function
       final response = await _client.rpc('admin_get_holder_requests');
       
@@ -390,6 +443,35 @@ class AuthService {
   Future<List<UserModel>> getAllUsers() async {
     try {
       print('Fetching all users via admin function...');
+      
+      // First ensure we're listed as admin in the user_emails table
+      final currentUser = await getCurrentUser();
+      if (currentUser != null && isAdmin(currentUser.email)) {
+        try {
+          // Check if we're in user_emails as admin
+          final userEmailsCheck = await _client
+              .from('user_emails')
+              .select()
+              .eq('id', currentUser.id)
+              .single();
+              
+          // If found but not admin, update
+          if (userEmailsCheck != null && userEmailsCheck['is_admin'] == false) {
+            await _client
+                .from('user_emails')
+                .update({'is_admin': true})
+                .eq('id', currentUser.id);
+          }
+        } catch (e) {
+          // If not found, insert
+          await _client.from('user_emails').insert({
+            'id': currentUser.id,
+            'email': currentUser.email,
+            'is_admin': true,
+            'created_at': DateTime.now().toIso8601String()
+          });
+        }
+      }
       
       // Use the more reliable admin function
       final response = await _client.rpc('admin_get_all_users');
