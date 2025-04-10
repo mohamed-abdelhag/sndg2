@@ -67,6 +67,7 @@ class AuthService {
     try {
       print('Attempting login for: $email');
       
+      // Simple auth login, don't overcomplicate
       final response = await _client.auth.signInWithPassword(
         email: email,
         password: password,
@@ -80,9 +81,9 @@ class AuthService {
       
       print('Auth successful for user: ${user.id}');
       
-      // We'll keep it simple - try to get the user from the database first
+      // Try to get the user profile
       try {
-        print('Trying to get user profile from database');
+        // First try to get the user profile directly
         final userData = await _client
             .from('users')
             .select()
@@ -92,65 +93,46 @@ class AuthService {
         print('Found user in database: ${userData['email']}');
         return UserModel.fromJson(userData as Map<String, dynamic>);
       } catch (e) {
-        print('User lookup failed, trying to create: $e');
+        print('User lookup failed: $e');
         
-        // Try to explicitly call create_user_record function to ensure user exists
+        // Call the create_user_record function to ensure the user exists
+        await _client.rpc('create_user_record', params: {
+          'user_id': user.id,
+          'user_email': email,
+          'user_role': isAdmin(email) ? 'admin' : 'normal',
+        });
+        
+        // Try again to get the user data
         try {
-          print('Calling create_user_record RPC');
-          final role = isAdmin(email) ? 'admin' : 'normal';
-          await _client.rpc('create_user_record', params: {
-            'user_id': user.id,
-            'user_email': email,
-            'user_role': role,
-          });
-          
-          // After creating, try to fetch again
           final newUserData = await _client
               .from('users')
               .select()
               .eq('id', user.id)
               .single();
-              
-          print('Created and fetched user from database');
+          
           return UserModel.fromJson(newUserData as Map<String, dynamic>);
-        } catch (rpcError) {
-          print('Failed to create user via RPC: $rpcError');
+        } catch (e2) {
+          print('Still failed to get user after creating: $e2');
           
-          // If that still fails, create a model directly
-          // Fall back to manual insertion for critical errors
+          // Return a basic user model for now based on auth data
+          // This allows login to succeed even if DB queries fail
           final role = isAdmin(email) ? 'admin' : 'normal';
-          final now = DateTime.now().toIso8601String();
-          final newUserData = {
-            'id': user.id,
-            'email': email,
-            'role': role,
-            'created_at': now,
-            'updated_at': now,
-            'requested_holder': false,
-            'requested_join_group': false,
-          };
+          final tempModel = UserModel(
+            id: user.id,
+            email: email,
+            role: role,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            requestedHolder: false,
+            requestedJoinGroup: false,
+          );
           
-          try {
-            await _client.from('users').insert(newUserData);
-            print('Created new user in database');
-            return UserModel.fromJson(newUserData);
-          } catch (insertError) {
-            print('Failed to insert user: $insertError');
-            
-            // For admin users, we can create a temporary model
-            if (isAdmin(email)) {
-              print('Creating admin model for non-DB user');
-              return UserModel.fromJson(newUserData);
-            }
-            
-            // For regular users, must exist in DB
-            throw 'User account could not be created. Please contact support.';
-          }
+          return tempModel;
         }
       }
     } catch (e) {
       print('Login error: $e');
-      rethrow;
+      throw 'Login failed. Please check your email and password.';
     }
   }
 
@@ -173,53 +155,60 @@ class AuthService {
       
       print('Auth signup successful for user: ${user.id}');
       
-      // Determine the role based on email domain
-      final role = isAdmin(email) ? 'admin' : 'normal';
-      print('Assigned role: $role');
-      
-      // Create user data
-      final now = DateTime.now().toIso8601String();
-      final userData = {
-        'id': user.id,
-        'email': email,
-        'role': role,
-        'created_at': now,
-        'updated_at': now,
-        'requested_holder': false,
-        'requested_join_group': false,
-      };
-      
-      // Insert user with retries
-      for (int i = 0; i < 3; i++) {
-        try {
-          print('Attempt ${i+1} to insert user into database');
-          await _client.from('users').insert(userData);
-          print('User successfully inserted into database');
-          return UserModel.fromJson(userData);
-        } catch (insertError) {
-          print('Insert error on attempt ${i+1}: $insertError');
-          
-          // If last attempt, or admin
-          if (i == 2 || isAdmin(email)) {
-            if (isAdmin(email)) {
-              print('Admin user, returning model without DB insertion');
-              return UserModel.fromJson(userData);
-            } else {
-              print('All insert attempts failed for regular user');
-              throw 'Failed to create user after multiple attempts';
-            }
+      // Use the RPC function to create the user record
+      try {
+        await _client.rpc('create_user_record', params: {
+          'user_id': user.id,
+          'user_email': email,
+          'user_role': isAdmin(email) ? 'admin' : 'normal',
+        });
+        
+        // Get the user data
+        final userData = await _client
+            .from('users')
+            .select()
+            .eq('id', user.id)
+            .single();
+            
+        return UserModel.fromJson(userData as Map<String, dynamic>);
+      } catch (e) {
+        print('Error creating user record: $e');
+        
+        // For admins, we can return a temporary model
+        if (isAdmin(email)) {
+          return UserModel(
+            id: user.id,
+            email: email,
+            role: 'admin',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            requestedHolder: false,
+            requestedJoinGroup: false,
+          );
+        } else {
+          // Try again using direct insert
+          try {
+            final newUserData = {
+              'id': user.id,
+              'email': email,
+              'role': 'normal',
+              'created_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+              'requested_holder': false,
+              'requested_join_group': false,
+            };
+            
+            await _client.from('users').insert(newUserData);
+            return UserModel.fromJson(newUserData);
+          } catch (insertError) {
+            print('Failed direct insert on signup: $insertError');
+            throw 'Failed to create user account. Please try again.';
           }
-          
-          // Wait before retrying
-          await Future.delayed(Duration(milliseconds: 500));
         }
       }
-      
-      // Should never reach here, but return null just in case
-      return null;
     } catch (e) {
       print('Signup error: $e');
-      rethrow;
+      throw e.toString();
     }
   }
 

@@ -88,6 +88,16 @@ CREATE TABLE public.withdrawals (
 );
 ```
 
+#### user_emails
+```sql
+CREATE TABLE public.user_emails (
+    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    email TEXT NOT NULL,
+    is_admin BOOLEAN NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
 ### Stored Procedures
 
 #### create_group_table
@@ -142,6 +152,132 @@ BEGIN
   ELSE
     RAISE EXCEPTION 'Permission denied: Only admins can call this function';
   END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+#### create_user_record
+```sql
+CREATE OR REPLACE FUNCTION public.create_user_record(user_id UUID, user_email TEXT, user_role TEXT)
+RETURNS VOID AS $$
+BEGIN
+    -- Create user record in public.users if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = user_id) THEN
+        INSERT INTO public.users (id, email, role, created_at, updated_at, requested_holder, requested_join_group)
+        VALUES (user_id, user_email, user_role, NOW(), NOW(), false, false);
+    END IF;
+    
+    -- Ensure user is in user_emails
+    IF NOT EXISTS (SELECT 1 FROM public.user_emails WHERE id = user_id) THEN
+        INSERT INTO public.user_emails (id, email, is_admin, created_at)
+        VALUES (user_id, user_email, user_email LIKE '%@sandoog', NOW());
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+#### handle_new_auth_user
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+RETURNS TRIGGER AS $$
+DECLARE
+    user_role TEXT;
+BEGIN
+    -- Determine role based on email domain
+    IF NEW.email LIKE '%@sandoog%' THEN
+        user_role := 'admin';
+    ELSE
+        user_role := 'normal';
+    END IF;
+    
+    -- Insert into public.users if not exists
+    IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = NEW.id) THEN
+        INSERT INTO public.users (
+            id, 
+            email,
+            role,
+            created_at,
+            updated_at,
+            requested_holder,
+            requested_join_group
+        ) VALUES (
+            NEW.id,
+            NEW.email,
+            user_role,
+            COALESCE(NEW.created_at, NOW()),
+            COALESCE(NEW.updated_at, NOW()),
+            false,
+            false
+        );
+    END IF;
+    
+    -- Insert into user_emails
+    IF NOT EXISTS (SELECT 1 FROM public.user_emails WHERE id = NEW.id) THEN
+        INSERT INTO public.user_emails (
+            id,
+            email,
+            is_admin,
+            created_at
+        ) VALUES (
+            NEW.id,
+            NEW.email,
+            NEW.email LIKE '%@sandoog%',
+            COALESCE(NEW.created_at, NOW())
+        );
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+#### ensure_user_record
+```sql
+CREATE OR REPLACE FUNCTION public.ensure_user_record()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If user doesn't exist in public.users, create them
+  IF NOT EXISTS (SELECT 1 FROM public.users WHERE id = NEW.id) THEN
+    INSERT INTO public.users (
+      id, 
+      email, 
+      role, 
+      created_at, 
+      updated_at, 
+      requested_holder, 
+      requested_join_group
+    ) 
+    VALUES (
+      NEW.id, 
+      NEW.email, 
+      CASE 
+        WHEN NEW.email LIKE '%@sandoog%' THEN 'admin'
+        ELSE 'normal' 
+      END,
+      NOW(), 
+      NOW(), 
+      false, 
+      false
+    );
+  END IF;
+  
+  -- Also make sure they exist in user_emails
+  IF NOT EXISTS (SELECT 1 FROM public.user_emails WHERE id = NEW.id) THEN
+    INSERT INTO public.user_emails (
+      id,
+      email,
+      is_admin,
+      created_at
+    )
+    VALUES (
+      NEW.id,
+      NEW.email,
+      NEW.email LIKE '%@sandoog%',
+      NOW()
+    );
+  END IF;
+  
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
