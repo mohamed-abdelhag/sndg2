@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
+import '../../services/auth_service_v2.dart';
+import '../../services/routing_service.dart';
 import '../../widgets/app_logo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -11,7 +12,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final AuthService authService = AuthService();
+  final AuthServiceV2 authService = AuthServiceV2();
+  final RoutingService routingService = RoutingService();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   
@@ -36,23 +38,17 @@ class _LoginScreenState extends State<LoginScreen> {
     
     try {
       print('Login attempt for: $email');
+      
+      // Login directly without email confirmation checks
       final user = await authService.login(email, password);
       
       if (!mounted) return;
       
       if (user != null) {
         print('Login successful, user role: ${user.role}');
-        // Route based on user role
-        if (user.role == 'admin') {
-          Navigator.pushReplacementNamed(context, '/admin_dashboard');
-        } else if (user.role == 'holder') {
-          Navigator.pushReplacementNamed(context, '/holder_dashboard');
-        } else if (user.groupId != null) {
-          Navigator.pushReplacementNamed(context, '/user_normal_group_dashboard', 
-            arguments: user.groupId);
-        } else {
-          Navigator.pushReplacementNamed(context, '/landing');
-        }
+        // Use routing service to determine where to go
+        final route = routingService.getRouteAfterLogin(user);
+        Navigator.pushReplacementNamed(context, route, arguments: user.groupId);
       } else {
         print('Login failed - null user returned');
         setState(() {
@@ -81,6 +77,63 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
       });
     }
+  }
+  
+  void _showEmailConfirmationDialog(String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Email Verification Required'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your email has not been verified yet. Please check your email inbox for a verification link.\n\n'
+                'If you don\'t see it, check your spam folder.'
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Didn\'t receive the email?',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: () async {
+                  try {
+                    await authService.resendConfirmationEmail(email);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Verification email resent! Please check your inbox.'),
+                      ),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.email),
+                label: const Text('Resend Verification Email'),
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

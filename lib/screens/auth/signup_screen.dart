@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../services/auth_service.dart';
+import '../../services/auth_service_v2.dart';
 import '../../widgets/app_logo.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -11,7 +11,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final AuthService authService = AuthService();
+  final AuthServiceV2 authService = AuthServiceV2();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
@@ -56,14 +56,47 @@ class _SignupScreenState extends State<SignupScreen> {
           barrierDismissible: false,
           builder: (BuildContext context) {
             return AlertDialog(
-              title: const Text('Account Created!'),
-              content: const Text(
-                'Your account has been created. Please check your email to verify your account before logging in.\n\n'
-                'If you don\'t see the verification email, please check your spam folder.'
+              title: const Text('Email Verification Required'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Your account has been created! You can now login, but we strongly recommend verifying your email.\n\n'
+                    'Please check your inbox for a verification link. If you don\'t see it, check your spam folder.'
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Didn\'t receive the email?',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () async {
+                      try {
+                        await authService.resendConfirmationEmail(email);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Verification email resent! Please check your inbox.'),
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.email),
+                    label: const Text('Resend Verification Email'),
+                  ),
+                ],
               ),
               actions: <Widget>[
                 TextButton(
-                  child: const Text('OK'),
+                  child: const Text('Go to Login'),
                   onPressed: () {
                     Navigator.of(context).pop();
                     // Navigate back to login page after signup
