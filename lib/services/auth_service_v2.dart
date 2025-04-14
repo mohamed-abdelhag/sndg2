@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
+import 'dart:convert';
 
 class AuthServiceV2 {
   final SupabaseClient _client;
@@ -33,49 +34,42 @@ class AuthServiceV2 {
       // Admin users get special handling to ensure they always work
       final isAdminUser = isAdmin(email);
       
-      // Get the user profile from database using RPC to avoid RLS issues
+      // Get the user profile from database using RPC
       try {
         final userData = await _client.rpc('get_user_profile', params: {
           'user_id': user.id,
         });
         
+        print('User profile response: $userData');
+        
         if (userData == null) {
           print('User profile not found for ID: ${user.id}');
           
-          // For admin users, create the profile if it doesn't exist
-          if (isAdminUser) {
-            print('Creating admin user profile');
-            await _client.rpc('create_user_profile', params: {
-              'user_id': user.id,
-              'user_email': email,
-              'user_role': 'admin',
-            });
-            
-            final now = DateTime.now();
-            return UserModel(
-              id: user.id,
-              email: email,
-              role: 'admin',
-              createdAt: now,
-              updatedAt: now,
-              requestedHolder: false,
-              requestedJoinGroup: false,
-            );
-          }
-          
-          // For regular users, create a basic profile
-          print('Creating user profile for regular user');
+          // Create a new profile
+          print('Creating ${isAdminUser ? "admin" : "regular"} user profile');
           await _client.rpc('create_user_profile', params: {
             'user_id': user.id,
             'user_email': email,
-            'user_role': 'normal',
+            'user_role': isAdminUser ? 'admin' : 'normal',
           });
           
+          // Try to get the profile again
+          final newUserData = await _client.rpc('get_user_profile', params: {
+            'user_id': user.id,
+          });
+          
+          if (newUserData != null) {
+            print('Created and retrieved user profile');
+            return UserModel.fromJson(newUserData);
+          }
+          
+          // Fallback
+          print('Using fallback user model');
           final now = DateTime.now();
           return UserModel(
             id: user.id,
             email: email,
-            role: 'normal',
+            role: isAdminUser ? 'admin' : 'normal',
             createdAt: now,
             updatedAt: now,
             requestedHolder: false,
@@ -83,7 +77,7 @@ class AuthServiceV2 {
           );
         }
         
-        print('Found user profile: ${userData['email']}');
+        print('Found user profile');
         return UserModel.fromJson(userData);
       } catch (e) {
         print('Error getting user profile: $e');
@@ -209,6 +203,17 @@ class AuthServiceV2 {
           'user_role': isAdminUser ? 'admin' : 'normal',
         });
         
+        // Try to get the profile again
+        final newUserData = await _client.rpc('get_user_profile', params: {
+          'user_id': user.id,
+        });
+        
+        if (newUserData != null) {
+          print('Created and retrieved user profile');
+          return UserModel.fromJson(newUserData);
+        }
+        
+        // Fallback
         final now = DateTime.now();
         return UserModel(
           id: user.id,
@@ -275,6 +280,7 @@ class AuthServiceV2 {
         return [];
       }
       
+      // Handle the new JSON array response
       return (response as List).map((user) => UserModel.fromJson(user)).toList();
     } catch (e) {
       print('Error loading holder requests: $e');
@@ -295,6 +301,7 @@ class AuthServiceV2 {
         return [];
       }
       
+      // Handle the new JSON array response
       return (response as List).map((user) => UserModel.fromJson(user)).toList();
     } catch (e) {
       print('Error loading users: $e');
